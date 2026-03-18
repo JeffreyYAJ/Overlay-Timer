@@ -1,0 +1,21 @@
+{
+  "name": "timer-overlay",
+  "version": "1.0.0",
+  "description": "Minuteur transparent always-on-top pour Linux",
+  "main": "main.js",
+  "scripts": {
+    "start": "electron .",
+    "build": "electron-builder --linux"
+  },
+  "devDependencies": {
+    "electron": "^28.3.3"
+  },
+  "build": {
+    "appId": "com.timer.overlay",
+    "productName": "Timer Overlay",
+    "linux": {
+      "target": "AppImage",
+      "category": "Utility"
+    }
+  }
+}

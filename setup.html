@@ -1,0 +1,265 @@
+<!DOCTYPE html>
+<html lang="fr">
+<head>
+<meta charset="UTF-8">
+<title>Timer Overlay — Config</title>
+<style>
+  @import url('https://fonts.googleapis.com/css2?family=JetBrains+Mono:wght@400;700&display=swap');
+
+  * { margin: 0; padding: 0; box-sizing: border-box; }
+
+  :root {
+    --bg: #0d0d18;
+    --surface: #16162a;
+    --border: #2a2a50;
+    --accent: #5a6fff;
+    --accent-hover: #7080ff;
+    --text: #dde0ff;
+    --muted: #7070a0;
+    --danger: #ff5566;
+    --radius: 16px;
+  }
+
+  html, body {
+    width: 100%; height: 100%;
+    background: transparent;
+    font-family: 'JetBrains Mono', 'Courier New', monospace;
+    overflow: hidden;
+    user-select: none;
+  }
+
+  .card {
+    width: 100%; height: 100%;
+    background: var(--bg);
+    border: 1px solid var(--border);
+    border-radius: var(--radius);
+    display: flex;
+    flex-direction: column;
+    align-items: center;
+    justify-content: center;
+    gap: 22px;
+    padding: 20px 28px;
+    position: relative;
+    box-shadow: 0 8px 40px rgba(0,0,0,0.7), inset 0 1px 0 rgba(255,255,255,0.04);
+  }
+
+  /* Drag handle */
+  .drag-bar {
+    position: absolute;
+    top: 0; left: 0; right: 44px; height: 36px;
+    -webkit-app-region: drag;
+    cursor: grab;
+  }
+
+  .close-btn {
+    position: absolute;
+    top: 10px; right: 12px;
+    width: 20px; height: 20px;
+    background: rgba(255,85,102,0.15);
+    border: 1px solid rgba(255,85,102,0.3);
+    border-radius: 50%;
+    color: var(--danger);
+    font-size: 12px;
+    cursor: pointer;
+    display: flex; align-items: center; justify-content: center;
+    transition: background 0.15s;
+    -webkit-app-region: no-drag;
+  }
+  .close-btn:hover { background: rgba(255,85,102,0.35); }
+
+  h1 {
+    font-size: 14px;
+    font-weight: 700;
+    color: var(--text);
+    letter-spacing: 0.1em;
+    text-transform: uppercase;
+    opacity: 0.9;
+  }
+  h1 span { color: var(--accent); }
+
+  /* Time picker */
+  .time-picker {
+    display: flex;
+    align-items: center;
+    gap: 8px;
+  }
+
+  .spin-group {
+    display: flex;
+    flex-direction: column;
+    align-items: center;
+    gap: 4px;
+  }
+
+  .spin-label {
+    font-size: 9px;
+    color: var(--muted);
+    text-transform: uppercase;
+    letter-spacing: 0.15em;
+  }
+
+  .spin-control {
+    display: flex;
+    flex-direction: column;
+    align-items: center;
+    background: var(--surface);
+    border: 1px solid var(--border);
+    border-radius: 10px;
+    overflow: hidden;
+    width: 70px;
+  }
+
+  .spin-btn {
+    width: 100%;
+    height: 26px;
+    background: transparent;
+    border: none;
+    color: var(--muted);
+    cursor: pointer;
+    font-size: 14px;
+    transition: background 0.12s, color 0.12s;
+  }
+  .spin-btn:hover { background: rgba(90,111,255,0.12); color: var(--accent); }
+
+  .spin-value {
+    font-size: 26px;
+    font-weight: 700;
+    color: var(--text);
+    width: 100%;
+    text-align: center;
+    padding: 2px 0;
+    background: transparent;
+    border: none;
+    outline: none;
+    font-family: 'JetBrains Mono', monospace;
+  }
+  .spin-value::-webkit-inner-spin-button { display: none; }
+
+  .sep {
+    font-size: 28px;
+    font-weight: 700;
+    color: var(--border);
+    margin-bottom: 14px;
+  }
+
+  /* Presets */
+  .presets {
+    display: flex;
+    gap: 8px;
+  }
+
+  .preset {
+    padding: 4px 12px;
+    border: 1px solid var(--border);
+    border-radius: 20px;
+    background: transparent;
+    color: var(--muted);
+    font-size: 11px;
+    font-family: inherit;
+    cursor: pointer;
+    transition: all 0.15s;
+  }
+  .preset:hover {
+    border-color: var(--accent);
+    color: var(--accent);
+    background: rgba(90,111,255,0.08);
+  }
+
+  /* Start button */
+  .start-btn {
+    width: 100%;
+    padding: 12px;
+    background: var(--accent);
+    border: none;
+    border-radius: 10px;
+    color: #fff;
+    font-size: 13px;
+    font-weight: 700;
+    font-family: inherit;
+    letter-spacing: 0.08em;
+    text-transform: uppercase;
+    cursor: pointer;
+    transition: background 0.15s, transform 0.1s;
+    position: relative;
+    overflow: hidden;
+  }
+  .start-btn::before {
+    content: '';
+    position: absolute;
+    inset: 0;
+    background: linear-gradient(135deg, rgba(255,255,255,0.1) 0%, transparent 60%);
+  }
+  .start-btn:hover { background: var(--accent-hover); }
+  .start-btn:active { transform: scale(0.98); }
+</style>
+</head>
+<body>
+<div class="card">
+  <div class="drag-bar"></div>
+  <button class="close-btn" onclick="window.require('electron').ipcRenderer.send('close-overlay'); window.close()">✕</button>
+
+  <h1>⏱ <span>Timer</span> Overlay</h1>
+
+  <div class="time-picker">
+    <div class="spin-group">
+      <div class="spin-label">min</div>
+      <div class="spin-control">
+        <button class="spin-btn" onclick="adjust('min',1)">▲</button>
+        <input class="spin-value" id="min" type="number" min="0" max="99" value="10">
+        <button class="spin-btn" onclick="adjust('min',-1)">▼</button>
+      </div>
+    </div>
+
+    <div class="sep">:</div>
+
+    <div class="spin-group">
+      <div class="spin-label">sec</div>
+      <div class="spin-control">
+        <button class="spin-btn" onclick="adjust('sec',1)">▲</button>
+        <input class="spin-value" id="sec" type="number" min="0" max="59" value="0">
+        <button class="spin-btn" onclick="adjust('sec',-1)">▼</button>
+      </div>
+    </div>
+  </div>
+
+  <div class="presets">
+    <button class="preset" onclick="setTime(1,0)">1 min</button>
+    <button class="preset" onclick="setTime(5,0)">5 min</button>
+    <button class="preset" onclick="setTime(10,0)">10 min</button>
+    <button class="preset" onclick="setTime(25,0)">25 min</button>
+  </div>
+
+  <button class="start-btn" onclick="startTimer()">▶ &nbsp;Démarrer</button>
+</div>
+
+<script>
+const { ipcRenderer } = require('electron')
+
+function adjust(field, delta) {
+  const el = document.getElementById(field)
+  let v = parseInt(el.value) + delta
+  if (field === 'min') v = Math.max(0, Math.min(99, v))
+  if (field === 'sec') v = Math.max(0, Math.min(59, v))
+  el.value = v
+}
+
+function setTime(m, s) {
+  document.getElementById('min').value = m
+  document.getElementById('sec').value = s
+}
+
+function startTimer() {
+  const m = parseInt(document.getElementById('min').value) || 0
+  const s = parseInt(document.getElementById('sec').value) || 0
+  const total = m * 60 + s
+  if (total <= 0) return
+  ipcRenderer.send('start-timer', total)
+}
+
+// Enter pour démarrer
+document.addEventListener('keydown', e => {
+  if (e.key === 'Enter') startTimer()
+})
+</script>
+</body>
+</html>

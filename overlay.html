@@ -1,0 +1,294 @@
+<!DOCTYPE html>
+<html lang="fr">
+<head>
+<meta charset="UTF-8">
+<title>Timer</title>
+<style>
+  @import url('https://fonts.googleapis.com/css2?family=JetBrains+Mono:wght@400;700;800&display=swap');
+
+  * { margin: 0; padding: 0; box-sizing: border-box; }
+
+  :root {
+    --accent: #5a6fff;
+    --danger: #ff4455;
+    --text: #e8eaff;
+    --muted: rgba(200,200,255,0.35);
+    --radius: 14px;
+  }
+
+  html, body {
+    width: 240px; height: 110px;
+    background: transparent;
+    overflow: hidden;
+    font-family: 'JetBrains Mono', 'Courier New', monospace;
+    user-select: none;
+  }
+
+  /* Fond de l'overlay */
+  .overlay {
+    width: 100%; height: 100%;
+    background: rgba(10, 10, 22, 0.82);
+    border: 1px solid rgba(90, 111, 255, 0.2);
+    border-radius: var(--radius);
+    backdrop-filter: blur(12px);
+    -webkit-backdrop-filter: blur(12px);
+    display: flex;
+    flex-direction: column;
+    align-items: center;
+    justify-content: center;
+    gap: 0;
+    position: relative;
+    overflow: hidden;
+    transition: background 0.4s, border-color 0.4s;
+  }
+
+  .overlay.urgent {
+    background: rgba(30, 8, 14, 0.88);
+    border-color: rgba(255, 68, 85, 0.4);
+    animation: pulse-border 1s ease-in-out infinite;
+  }
+
+  .overlay.done {
+    background: rgba(20, 5, 10, 0.92);
+    border-color: rgba(255, 68, 85, 0.7);
+  }
+
+  @keyframes pulse-border {
+    0%, 100% { border-color: rgba(255, 68, 85, 0.2); }
+    50%       { border-color: rgba(255, 68, 85, 0.7); }
+  }
+
+  /* Grain texture */
+  .overlay::before {
+    content: '';
+    position: absolute;
+    inset: 0;
+    background-image: url("data:image/svg+xml,%3Csvg viewBox='0 0 200 200' xmlns='http://www.w3.org/2000/svg'%3E%3Cfilter id='n'%3E%3CfeTurbulence type='fractalNoise' baseFrequency='0.85' numOctaves='4' stitchTiles='stitch'/%3E%3C/filter%3E%3Crect width='100%25' height='100%25' filter='url(%23n)' opacity='0.04'/%3E%3C/svg%3E");
+    border-radius: var(--radius);
+    pointer-events: none;
+    opacity: 0.6;
+  }
+
+  /* Drag zone (zone haute) */
+  .drag-zone {
+    position: absolute;
+    top: 0; left: 0; right: 36px; height: 32px;
+    cursor: grab;
+    z-index: 10;
+  }
+  .drag-zone:active { cursor: grabbing; }
+
+  /* Bouton fermer */
+  .close-btn {
+    position: absolute;
+    top: 7px; right: 8px;
+    width: 18px; height: 18px;
+    border-radius: 50%;
+    background: rgba(255,68,85,0.12);
+    border: 1px solid rgba(255,68,85,0.25);
+    color: var(--danger);
+    font-size: 10px;
+    cursor: pointer;
+    display: flex; align-items: center; justify-content: center;
+    opacity: 0;
+    transition: opacity 0.2s, background 0.15s;
+    z-index: 20;
+  }
+  .overlay:hover .close-btn { opacity: 1; }
+  .close-btn:hover { background: rgba(255,68,85,0.35); }
+
+  /* Affichage temps */
+  .time-display {
+    font-size: 38px;
+    font-weight: 800;
+    color: var(--text);
+    letter-spacing: -0.02em;
+    line-height: 1;
+    transition: color 0.3s;
+    z-index: 5;
+  }
+
+  .overlay.urgent .time-display { color: #ff7788; }
+  .overlay.done   .time-display { color: #ff4455; font-size: 26px; }
+
+  /* Barre de progression */
+  .progress-track {
+    position: absolute;
+    bottom: 10px; left: 14px; right: 14px;
+    height: 3px;
+    background: rgba(255,255,255,0.06);
+    border-radius: 2px;
+    overflow: hidden;
+  }
+
+  .progress-fill {
+    height: 100%;
+    border-radius: 2px;
+    background: var(--accent);
+    transition: width 0.9s linear, background 0.4s;
+    transform-origin: left;
+  }
+
+  .overlay.urgent .progress-fill { background: var(--danger); }
+
+  /* Label état */
+  .status {
+    font-size: 9px;
+    letter-spacing: 0.2em;
+    text-transform: uppercase;
+    color: var(--muted);
+    margin-top: 4px;
+    z-index: 5;
+    min-height: 12px;
+  }
+
+  /* Click-through badge */
+  .ct-badge {
+    position: absolute;
+    top: 8px; left: 10px;
+    font-size: 8px;
+    color: rgba(90,111,255,0.5);
+    letter-spacing: 0.1em;
+    opacity: 0;
+    transition: opacity 0.3s;
+  }
+  .ct-badge.visible { opacity: 1; }
+</style>
+</head>
+<body>
+
+<div class="overlay" id="overlay">
+  <!-- Drag handle -->
+  <div class="drag-zone" id="dragZone"></div>
+
+  <button class="close-btn" id="closeBtn">✕</button>
+  <div class="ct-badge" id="ctBadge">CLICK-THROUGH</div>
+
+  <div class="time-display" id="timeDisplay">00:00</div>
+  <div class="status" id="status"></div>
+
+  <div class="progress-track">
+    <div class="progress-fill" id="progressFill"></div>
+  </div>
+</div>
+
+<script>
+const { ipcRenderer } = require('electron')
+
+// ── Init ──────────────────────────────────────────────────────────────
+const params     = new URLSearchParams(location.search)
+const TOTAL      = parseInt(params.get('seconds')) || 600
+let remaining    = TOTAL
+let running      = true
+let clickThrough = true   // actif par défaut (overlay non-interactif)
+let interval     = null
+
+// Appliquer l'état clic-through initial
+ipcRenderer.send('toggle-click-through', clickThrough)
+
+// ── Éléments ──────────────────────────────────────────────────────────
+const overlay      = document.getElementById('overlay')
+const timeDisplay  = document.getElementById('timeDisplay')
+const status       = document.getElementById('status')
+const progressFill = document.getElementById('progressFill')
+const ctBadge      = document.getElementById('ctBadge')
+const closeBtn     = document.getElementById('closeBtn')
+const dragZone     = document.getElementById('dragZone')
+
+// ── Rendu ─────────────────────────────────────────────────────────────
+function render() {
+  const m = Math.floor(remaining / 60)
+  const s = remaining % 60
+  const done = remaining <= 0
+
+  timeDisplay.textContent = done
+    ? '✓ Terminé'
+    : `${String(m).padStart(2,'0')}:${String(s).padStart(2,'0')}`
+
+  // Classes état
+  overlay.classList.toggle('urgent', remaining <= 60 && !done)
+  overlay.classList.toggle('done', done)
+
+  // Barre progression
+  const pct = Math.max(0, (remaining / TOTAL) * 100)
+  progressFill.style.width = pct + '%'
+
+  // Status label
+  if (done) {
+    status.textContent = ''
+  } else if (!running) {
+    status.textContent = '— pause —'
+  } else if (remaining <= 60) {
+    status.textContent = '! urgence'
+  } else {
+    status.textContent = ''
+  }
+}
+
+// ── Tick ──────────────────────────────────────────────────────────────
+function tick() {
+  if (!running || remaining <= 0) return
+  remaining--
+  render()
+  if (remaining <= 0) {
+    clearInterval(interval)
+    ipcRenderer.send('timer-done')
+  }
+}
+
+interval = setInterval(tick, 1000)
+render()
+
+// ── Clic-through toggle ───────────────────────────────────────────────
+// Double-clic sur l'overlay bascule clic-through
+// (mais en mode clic-through, les events ne passent pas → utiliser Ctrl+clic)
+// On expose aussi un raccourci clavier global via la zone drag
+
+function toggleClickThrough() {
+  clickThrough = !clickThrough
+  ipcRenderer.send('toggle-click-through', clickThrough)
+  ctBadge.classList.toggle('visible', clickThrough)
+}
+
+// ── Drag to move ──────────────────────────────────────────────────────
+// Les events souris passent via forward:true même en clic-through
+let dragging = false
+let lastX, lastY
+
+dragZone.addEventListener('mousedown', e => {
+  dragging = true
+  lastX = e.screenX
+  lastY = e.screenY
+})
+
+window.addEventListener('mousemove', e => {
+  if (!dragging) return
+  const dx = e.screenX - lastX
+  const dy = e.screenY - lastY
+  lastX = e.screenX
+  lastY = e.screenY
+  ipcRenderer.send('move-overlay', { dx, dy })
+})
+
+window.addEventListener('mouseup', () => { dragging = false })
+
+// Double-clic sur drag zone → pause/reprise (désactive clic-through temporairement)
+dragZone.addEventListener('dblclick', () => {
+  running = !running
+  render()
+})
+
+// ── Bouton fermer ─────────────────────────────────────────────────────
+closeBtn.addEventListener('click', () => {
+  ipcRenderer.send('close-overlay')
+})
+
+// ── Raccourcis clavier ────────────────────────────────────────────────
+window.addEventListener('keydown', e => {
+  if (e.key === ' ')      { running = !running; render() }
+  if (e.key === 't' || e.key === 'T') toggleClickThrough()
+  if (e.key === 'Escape' || e.key === 'q') ipcRenderer.send('close-overlay')
+})
+</script>
+</body>
+</html>
