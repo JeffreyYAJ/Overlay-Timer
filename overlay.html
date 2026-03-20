@@ -53,6 +53,37 @@
     border-color: rgba(255, 68, 85, 0.7);
   }
 
+  /* Bouton relancer (visible uniquement quand done) */
+  .restart-btn {
+    display: none;
+    align-items: center;
+    gap: 6px;
+    margin-top: 8px;
+    padding: 5px 14px;
+    background: rgba(90, 111, 255, 0.15);
+    border: 1px solid rgba(90, 111, 255, 0.4);
+    border-radius: 20px;
+    color: var(--accent);
+    font-size: 11px;
+    font-family: 'JetBrains Mono', 'Courier New', monospace;
+    font-weight: 700;
+    letter-spacing: 0.1em;
+    cursor: pointer;
+    z-index: 20;
+    transition: background 0.15s, border-color 0.15s;
+    animation: fade-in 0.4s ease;
+  }
+  .overlay.done .restart-btn { display: flex; }
+  .restart-btn:hover {
+    background: rgba(90, 111, 255, 0.3);
+    border-color: rgba(90, 111, 255, 0.8);
+  }
+
+  @keyframes fade-in {
+    from { opacity: 0; transform: translateY(4px); }
+    to   { opacity: 1; transform: translateY(0); }
+  }
+
   @keyframes pulse-border {
     0%, 100% { border-color: rgba(255, 68, 85, 0.2); }
     50%       { border-color: rgba(255, 68, 85, 0.7); }
@@ -166,6 +197,7 @@
 
   <div class="time-display" id="timeDisplay">00:00</div>
   <div class="status" id="status"></div>
+  <button class="restart-btn" id="restartBtn">↺ &nbsp;Nouveau timer</button>
 
   <div class="progress-track">
     <div class="progress-fill" id="progressFill"></div>
@@ -192,8 +224,9 @@ const timeDisplay  = document.getElementById('timeDisplay')
 const status       = document.getElementById('status')
 const progressFill = document.getElementById('progressFill')
 const ctBadge      = document.getElementById('ctBadge')
-const closeBtn     = document.getElementById('closeBtn')
-const dragZone     = document.getElementById('dragZone')
+const closeBtn   = document.getElementById('closeBtn')
+const dragZone   = document.getElementById('dragZone')
+const restartBtn = document.getElementById('restartBtn')
 
 // ── Rendu ─────────────────────────────────────────────────────────────
 function render() {
@@ -281,6 +314,11 @@ dragZone.addEventListener('dblclick', () => {
 // ── Bouton fermer ─────────────────────────────────────────────────────
 closeBtn.addEventListener('click', () => {
   ipcRenderer.send('close-overlay')
+})
+
+// ── Bouton relancer ───────────────────────────────────────────────────
+restartBtn.addEventListener('click', () => {
+  ipcRenderer.send('restart-timer')
 })
 
 // ── Raccourcis clavier ────────────────────────────────────────────────

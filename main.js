@@ -105,6 +105,15 @@ ipcMain.on('timer-done', () => {
   }).show()
 })
 
+// Relancer : fermer l'overlay et rouvrir la fenêtre de config
+ipcMain.on('restart-timer', () => {
+  if (overlayWin) {
+    overlayWin.destroy()
+    overlayWin = null
+  }
+  createSetupWindow()
+})
+
 // ── Init ──────────────────────────────────────────────────────────────
 app.whenReady().then(() => {
   createSetupWindow()
