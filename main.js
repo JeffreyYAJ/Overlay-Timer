@@ -7,7 +7,7 @@ let setupWin = null
 function createSetupWindow() {
   setupWin = new BrowserWindow({
     width: 360,
-    height: 260,
+    height: 280,
     resizable: false,
     frame: false,
     transparent: true,
@@ -96,12 +96,15 @@ ipcMain.on('timer-done', () => {
 })
 
 ipcMain.on('restart-timer', () => {
+  if (!setupWin) {
+    createSetupWindow()
+  }
+
   if (overlayWin) {
-    overlayWin.removeAllListeners('closed') 
-    overlayWin.destroy()
+    overlayWin.removeAllListeners('closed')
+    overlayWin.close() 
     overlayWin = null
   }
-  createSetupWindow()
 })
 
 app.whenReady().then(() => {
