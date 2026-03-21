@@ -266,6 +266,9 @@ function tick() {
   if (remaining <= 0) {
     clearInterval(interval)
     ipcRenderer.send('timer-done')
+    clickThrough = false
+    ipcRenderer.send('toggle-click-through', false)
+    ctBadge.classList.remove('visible')
   }
 }
 
